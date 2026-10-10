@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>XD-Nexus: Terminal & Arcade Absurdo</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyberpunk: {
+                            bg: '#0a0b10',
+                            card: '#121420',
+                            border: '#1f2438',
+                            neonPink: '#ff007f',
+                            neonCyan: '#00f0ff',
+                            neonYellow: '#ffe600',
+                            neonGreen: '#00ff66',
+                            purple: '#9d00ff'
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'monospace'],
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0b10;
+            color: #f3f4f6;
+            overflow-x: hidden;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom neon scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #121420;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #ff007f;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00f0ff;
+        }
+        /* Glow effects */
+        .neon-glow-pink {
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.5);
+        }
+        .neon-glow-cyan {
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
+        }
+        .neon-glow-yellow {
+            box-shadow: 0 0 15px rgba(255, 230, 0, 0.5);
+        }
+        .text-glow-cyan {
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.7);
+        }
+        .text-glow-pink {
+            text-shadow: 0 0 10px rgba(255, 0, 127, 0.7);
+        }
+        /* CRT scanline effect for terminal */
+        .crt::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 20;
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        /* Touch ripples */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple-effect 0.6s linear;
+            background-color: rgba(0, 240, 255, 0.7);
+            pointer-events: none;
+        }
+        @keyframes ripple-effect {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        @keyframes float-slow {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(2deg); }
+        }
+        .animate-float {
+            animation: float-slow 4s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col relative select-none">
+
+    <!-- Header / Navbar -->
+    <header class="bg-cyberpunk-card border-b border-cyberpunk-border sticky top-0 z-50 px-4 py-3 flex items-center justify-between shadow-lg">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyberpunk-neonPink to-cyberpunk-neonCyan flex items-center justify-center font-bold text-xl text-black neon-glow-cyan animate-pulse">
+                XD
+            </div>
+            <div>
+                <h1 class="font-extrabold text-lg sm:text-xl tracking-wider bg-gradient-to-r from-cyberpunk-neonCyan via-cyberpunk-neonPink to-cyberpunk-neonYellow bg-clip-text text-transparent">
+                    XD-NEXUS 3000
+                </h1>
+                <p class="text-xs text-gray-400 font-mono">Terminal, Arcade & AI Absurda</p>
+            </div>
+        </div>
+
+        <!-- Desktop Navigation Tabs -->
+        <nav class="hidden md:flex space-x-2">
+            <button onclick="switchTab('terminal')" class="nav-btn px-4 py-2 rounded-lg font-semibold text-sm transition bg-cyberpunk-neonCyan/20 text-cyberpunk-neonCyan border border-cyberpunk-neonCyan/50" data-tab="terminal">
+                <i class="fa-solid fa-terminal mr-2"></i>Terminal XD
+            </button>
+            <button onclick="switchTab('arcade')" class="nav-btn px-4 py-2 rounded-lg font-semibold text-sm transition text-gray-400 hover:text-white hover:bg-white/5" data-tab="arcade">
+                <i class="fa-solid fa-gamepad mr-2"></i>XD-Arcade
+            </button>
+            <button onclick="switchTab('ai')" class="nav-btn px-4 py-2 rounded-lg font-semibold text-sm transition text-gray-400 hover:text-white hover:bg-white/5" data-tab="ai">
+                <i class="fa-solid fa-robot mr-2"></i>Gemini Comediante
+            </button>
+            <button onclick="switchTab('utils')" class="nav-btn px-4 py-2 rounded-lg font-semibold text-sm transition text-gray-400 hover:text-white hover:bg-white/5" data-tab="utils">
+                <i class="fa-solid fa-box-open mr-2"></i>Caja de Locuras
+            </button>
+        </nav>
+
+        <!-- Quick Status & Panic Button -->
+        <div class="flex items-center space-x-2">
+            <button onclick="triggerPanic()" class="bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-2 rounded-xl text-xs sm:text-sm shadow-lg shadow-red-600/50 active:scale-95 transition flex items-center space-x-1 border border-red-400">
+                <i class="fa-solid fa-skull"></i>
+                <span class="hidden sm:inline">PÁNICO</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-6xl w-full mx-auto p-3 sm:p-6 flex flex-col">
+
+        <!-- TAB 1: TERMINAL XD -->
+        <section id="view-terminal" class="tab-view flex-1 flex flex-col space-y-4">
+            <div class="bg-cyberpunk-card border border-cyberpunk-border rounded-2xl p-4 shadow-xl flex flex-col h-[75vh] relative overflow-hidden crt">
+                <!-- Terminal Header Bar -->
+                <div class="flex items-center justify-between pb-3 border-b border-cyberpunk-border mb-3 z-30">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                        <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                        <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        <span class="text-xs font-mono text-gray-400 ml-2">root@xd-system:~/windows-android #</span>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="clearTerminal()" class="text-xs text-gray-400 hover:text-cyberpunk-neonCyan px-2 py-1 bg-white/5 rounded"><i class="fa-solid fa-trash mr-1"></i>Limpiar</button>
+                        <button onclick="insertCommand('help')" class="text-xs text-gray-400 hover:text-cyberpunk-neonPink px-2 py-1 bg-white/5 rounded"><i class="fa-solid fa-question mr-1"></i>Ayuda</button>
+                    </div>
+                </div>
+
+                <!-- Terminal Output Console -->
+                <div id="terminal-output" class="flex-1 overflow-y-auto font-mono text-xs sm:text-sm space-y-2 pr-2 text-cyberpunk-neonCyan z-30">
+                    <div class="text-gray-400">[SISTEMA] Iniciando núcleo XD v6.9... Compatible con Windows y Android Táctil detectado.</div>
+                    <div class="text-cyberpunk-neonPink">[!] Escribe <span class="text-cyberpunk-neonYellow font-bold">help</span> para ver los comandos secretos (o prueba <span class="text-cyberpunk-neonYellow font-bold">hackear_nasa</span>).</div>
+                </div>
+
+                <!-- Terminal Input Form -->
+                <form id="terminal-form" onsubmit="handleTerminalSubmit(event)" class="mt-3 flex items-center space-x-2 z-30 pt-2 border-t border-cyberpunk-border">
+                    <span class="text-cyberpunk-neonPink font-mono font-bold">$</span>
+                    <input type="text" id="terminal-input" autocomplete="off" placeholder="Escribe un comando aquí (ej: chiste, matrix, sudo)..." 
+                           class="flex-1 bg-transparent border-none outline-none font-mono text-white text-xs sm:text-sm placeholder-gray-600">
+                    <button type="submit" class="bg-cyberpunk-neonCyan/20 hover:bg-cyberpunk-neonCyan/40 text-cyberpunk-neonCyan border border-cyberpunk-neonCyan px-4 py-2 rounded-xl font-mono text-xs font-bold transition active:scale-95">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Quick Command Chips for Touchscreen / Windows -->
+            <div class="flex flex-wrap gap-2">
+                <button onclick="runCommand('help')" class="bg-white/5 hover:bg-white/10 border border-cyberpunk-border text-xs px-3 py-1.5 rounded-xl font-mono text-cyberpunk-neonCyan active:scale-95 transition">help</button>
+                <button onclick="runCommand('hackear_nasa')" class="bg-white/5 hover:bg-white/10 border border-cyberpunk-border text-xs px-3 py-1.5 rounded-xl font-mono text-cyberpunk-neonPink active:scale-95 transition">hackear_nasa</button>
+                <button onclick="runCommand('chiste')" class="bg-white/5 hover:bg-white/10 border border-cyberpunk-border text-xs px-3 py-1.5 rounded-xl font-mono text-cyberpunk-neonYellow active:scale-95 transition">chiste</button>
+                <button onclick="runCommand('matrix')" class="bg-white/5 hover:bg-white/10 border border-cyberpunk-border text-xs px-3 py-1.5 rounded-xl font-mono text-cyberpunk-neonGreen active:scale-95 transition">matrix</button>
+                <button onclick="runCommand('t_amo')" class="bg-white/5 hover:bg-white/10 border border-cyberpunk-border text-xs px-3 py-1.5 rounded-xl font-mono text-pink-400 active:scale-95 transition">t_amo</button>
+                <button onclick="runCommand('sudo rm -rf /')" class="bg-white/5 hover:bg-white/10 border border-cyberpunk-border text-xs px-3 py-1.5 rounded-xl font-mono text-red-400 active:scale-95 transition">sudo rm -rf</button>
+                <button onclick="runCommand('easteregg')" class="bg-white/5 hover:bg-white/10 border border-cyberpunk-border text-xs px-3 py-1.5 rounded-xl font-mono text-purple-400 active:scale-95 transition">easteregg</button>
+            </div>
+        </section>
+
+        <!-- TAB 2: XD-ARCADE -->
+        <section id="view-arcade" class="tab-view hidden flex-1 flex flex-col space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <!-- Game 1: Meme Clicker (Cookie Clicker XD) -->
+                <div class="bg-cyberpunk-card border border-cyberpunk-border rounded-2xl p-6 shadow-xl flex flex-col items-center justify-between text-center relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-15 text-6xl text-cyberpunk-neonPink font-bold">XD</div>
+                    <div>
+                        <h2 class="text-xl font-extrabold text-cyberpunk-neonCyan mb-1"><i class="fa-solid fa-cat mr-2"></i>CatClicker XD</h2>
+                        <p class="text-xs text-gray-400">Toca al gato supremo para farmear puntos XD y comprar mejoras absurdas.</p>
+                    </div>
+
+                    <div class="my-6">
+                        <div class="text-4xl sm:text-5xl font-extrabold text-cyberpunk-neonYellow font-mono" id="xd-score">0</div>
+                        <div class="text-xs text-gray-400 mt-1">Puntos XD (CPS: <span id="xd-cps">0</span>)</div>
+                    </div>
+
+                    <!-- Giant Clickable Meme Object -->
+                    <div class="relative my-4">
+                        <div class="absolute inset-0 bg-cyberpunk-neonPink rounded-full filter blur-xl opacity-30 animate-pulse"></div>
+                        <button onclick="clickMeme(event)" class="relative w-36 h-36 sm:w-44 sm:h-44 rounded-full bg-gradient-to-br from-cyberpunk-neonPink to-cyberpunk-purple border-4 border-cyberpunk-neonCyan flex items-center justify-center text-6xl sm:text-7xl shadow-2xl active:scale-90 transition transform hover:rotate-3">
+                            🐱
+                        </button>
+                    </div>
+
+                    <!-- Shop / Upgrades -->
+                    <div class="w-full mt-4 space-y-2">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider text-left">Mejoras Locas</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <button onclick="buyUpgrade('autoclick')" class="bg-white/5 hover:bg-white/10 border border-cyberpunk-border p-2.5 rounded-xl flex items-center justify-between text-xs transition active:scale-95">
+                                <div class="text-left">
+                                    <div class="font-bold text-white">👵 Abuela Hacker</div>
+                                    <div class="text-cyberpunk-neonCyan">+1 XD/s (Costo: <span id="cost-autoclick">15</span>)</div>
+                                </div>
+                                <span class="bg-cyberpunk-neonCyan/20 text-cyberpunk-neonCyan font-mono px-2 py-1 rounded" id="count-autoclick">0</span>
+                            </button>
+                            <button onclick="buyUpgrade('gpu')" class="bg-white/5 hover:bg-white/10 border border-cyberpunk-border p-2.5 rounded-xl flex items-center justify-between text-xs transition active:scale-95">
+                                <div class="text-left">
+                                    <div class="font-bold text-white">🔥 RTX 5090 Ti</div>
+                                    <div class="text-cyberpunk-neonYellow">+8 XD/s (Costo: <span id="cost-gpu">100</span>)</div>
+                                </div>
+                                <span class="bg-cyberpunk-neonYellow/20 text-cyberpunk-neonYellow font-mono px-2 py-1 rounded" id="count-gpu">0</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Game 2: Reflejos Táctiles / Esquivar Obstáculos -->
+                <div class="bg-cyberpunk-card border border-cyberpunk-border rounded-2xl p-6 shadow-xl flex flex-col items-center justify-between text-center relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-15 text-6xl text-cyberpunk-neonCyan font-bold">REF</div>
+                    <div>
+                        <h2 class="text-xl font-extrabold text-cyberpunk-neonPink mb-1"><i class="fa-solid fa-bolt mr-2"></i>Atrapa el Spam</h2>
+                        <p class="text-xs text-gray-400">Toca rápido los cubos azules que aparezcan y evita los rojos. Ideal para Windows y Android.</p>
+                    </div>
+
+                    <!-- Reflex Game Arena -->
+                    <div id="reflex-arena" class="w-full h-64 bg-black/40 border border-cyberpunk-border rounded-2xl relative my-4 overflow-hidden flex items-center justify-center">
+                        <div id="reflex-message" class="text-gray-400 text-sm font-mono z-10">Presiona "Iniciar Juego"</div>
+                        <div id="reflex-target" onclick="hitReflexTarget(event)" class="hidden absolute w-16 h-16 rounded-2xl bg-cyberpunk-neonCyan neon-glow-cyan flex items-center justify-center text-2xl cursor-pointer active:scale-90 transition">
+                            👾
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between w-full">
+                        <div class="text-sm font-mono text-gray-300">Puntaje: <span id="reflex-score" class="text-cyberpunk-neonYellow font-bold">0</span></div>
+                        <button onclick="startReflexGame()" id="reflex-btn" class="bg-cyberpunk-neonPink hover:bg-pink-600 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-pink-600/30 active:scale-95 transition">
+                            Iniciar Juego
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- TAB 3: GEMINI API CHAT -->
+        <section id="view-ai" class="tab-view hidden flex-1 flex flex-col space-y-4">
+            <div class="bg-cyberpunk-card border border-cyberpunk-border rounded-2xl p-4 shadow-xl flex flex-col h-[75vh] relative overflow-hidden">
+                <!-- API Key Configuration Banner -->
+                <div class="bg-white/5 border border-cyberpunk-border rounded-xl p-3 mb-3 flex flex-col sm:flex-row items-center justify-between gap-2">
+                    <div class="flex items-center space-x-2 text-xs text-gray-300">
+                        <i class="fa-solid fa-key text-cyberpunk-neonYellow"></i>
+                        <span>Gemini API Key (Opcional, si no pones usará modo Comediante Bot):</span>
+                    </div>
+                    <div class="flex items-center w-full sm:w-auto space-x-2">
+                        <input type="password" id="gemini-key-input" placeholder="AIzaSy..." 
+                               class="bg-black/50 border border-cyberpunk-border rounded-lg px-3 py-1.5 text-xs text-white outline-none font-mono w-full sm:w-48">
+                        <button onclick="saveApiKey()" class="bg-cyberpunk-neonCyan/20 hover:bg-cyberpunk-neonCyan/40 text-cyberpunk-neonCyan border border-cyberpunk-neonCyan px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap active:scale-95 transition">
+                            Guardar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Chat Message Box -->
+                <div id="chat-messages" class="flex-1 overflow-y-auto space-y-3 pr-2 text-sm">
+                    <div class="flex items-start space-x-2">
+                        <div class="w-8 h-8 rounded-xl bg-cyberpunk-neonPink flex items-center justify-center text-black font-bold flex-shrink-0">IA</div>
+                        <div class="bg-white/5 border border-cyberpunk-border rounded-2xl p-3 text-gray-200 max-w-[85%] text-xs sm:text-sm">
+                            ¡Hola humano! Soy tu Gemini con personalidad "muy xd" y sarcástica. Pregúntame lo que sea, insulta a mi creador o pídeme soluciones absurdas para tus problemas. 😎
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Input Form -->
+                <form id="chat-form" onsubmit="handleChatSubmit(event)" class="mt-3 flex items-center space-x-2 pt-2 border-t border-cyberpunk-border">
+                    <input type="text" id="chat-input" autocomplete="off" placeholder="Escribe tu duda existencial o chiste..." 
+                           class="flex-1 bg-black/50 border border-cyberpunk-border rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white outline-none focus:border-cyberpunk-neonPink transition">
+                    <button type="submit" class="bg-gradient-to-r from-cyberpunk-neonPink to-cyberpunk-purple text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-lg active:scale-95 transition">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- TAB 4: CAJA DE SORPRESAS Y UTILIDADES -->
+        <section id="view-utils" class="tab-view hidden flex-1 flex flex-col space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- Excuses Generator -->
+                <div class="bg-cyberpunk-card border border-cyberpunk-border rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-lg font-bold text-cyberpunk-neonYellow mb-1"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generador de Excusas XD</h2>
+                        <p class="text-xs text-gray-400 mb-4">¿No quieres ir a trabajar o estudiar? Genera una excusa tan loca que nadie se atreverá a cuestionarte.</p>
+                    </div>
+                    <div id="excuse-box" class="bg-black/50 border border-cyberpunk-border rounded-xl p-4 text-sm font-mono text-cyberpunk-neonCyan min-h-[80px] flex items-center justify-center text-center my-2">
+                        "Presiona el botón para desbloquear la mentira perfecta..."
+                    </div>
+                    <button onclick="generateExcuse()" class="w-full bg-cyberpunk-neonYellow/20 hover:bg-cyberpunk-neonYellow/30 border border-cyberpunk-neonYellow text-cyberpunk-neonYellow font-bold py-3 rounded-xl text-xs uppercase tracking-wider active:scale-95 transition">
+                        Generar Excusa Maestra
+                    </button>
+                </div>
+
+                <!-- Mini Bloc de Notas (LocalStorage) -->
+                <div class="bg-cyberpunk-card border border-cyberpunk-border rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-lg font-bold text-cyberpunk-neonCyan mb-1"><i class="fa-solid fa-note-sticky mr-2"></i>Bloc de Notas Táctil</h2>
+                        <p class="text-xs text-gray-400 mb-2">Tus notas se guardan automáticamente en tu dispositivo (Windows/Android).</p>
+                    </div>
+                    <textarea id="quick-notes" oninput="saveNotes()" placeholder="Escribe tus ideas locas, contraseñas falsas o listas de pendientes..."
+                              class="w-full h-32 bg-black/50 border border-cyberpunk-border rounded-xl p-3 text-xs text-white outline-none focus:border-cyberpunk-neonCyan font-mono resize-none my-2"></textarea>
+                    <div class="text-[10px] text-gray-500 text-right"><span id="notes-status">Guardado automáticamente</span></div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Panic Modal (Fake BSOD / Matrix Chaos) -->
+    <div id="panic-modal" class="fixed insetn-0 inset-0 bg-black/95 z-50 hidden flex flex-col items-center justify-center p-6 text-center">
+        <div class="bg-blue-600 text-white p-6 sm:p-10 rounded-2xl max-w-xl shadow-2xl border-4 border-white/20 font-mono">
+            <div class="text-5xl mb-4">:(</div>
+            <h2 class="text-xl sm:text-2xl font-bold mb-2">Tu PC con Windows o Android explotó de tanto XD.</h2>
+            <p class="text-xs sm:text-sm text-blue-100 mb-6">Error crítico: El nivel de cringe y diversión superó los límites permitidos por el universo.</p>
+            <div class="text-left bg-black/30 p-4 rounded-xl text-xs mb-6 space-y-1">
+                <div>Código de detención: <span class="text-yellow-300">TOO_MUCH_XD_EXCEPTION</span></div>
+                <div>Lo que falló: <span class="text-yellow-300">system32/gatos_bailando.dll</span></div>
+            </div>
+            <button onclick="closePanic()" class="bg-white text-blue-900 font-bold px-6 py-3 rounded-xl text-xs uppercase tracking-wider hover:bg-blue-100 active:scale-95 transition">
+                Reiniciar Sistema XD
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer mobile navigation bar for touchscreens -->
+    <footer class="md:hidden bg-cyberpunk-card border-t border-cyberpunk-border fixed bottom-0 left-0 right-0 z-40 flex justify-around p-3">
+        <button onclick="switchTab('terminal')" class="mobile-nav-btn flex flex-col items-center text-cyberpunk-neonCyan" data-tab="terminal">
+            <i class="fa-solid fa-terminal text-lg"></i>
+            <span class="text-[10px] mt-1 font-semibold">Terminal</span>
+        </button>
+        <button onclick="switchTab('arcade')" class="mobile-nav-btn flex flex-col items-center text-gray-400" data-tab="arcade">
+            <i class="fa-solid fa-gamepad text-lg"></i>
+            <span class="text-[10px] mt-1 font-semibold">Arcade</span>
+        </button>
+        <button onclick="switchTab('ai')" class="mobile-nav-btn flex flex-col items-center text-gray-400" data-tab="ai">
+            <i class="fa-solid fa-robot text-lg"></i>
+            <span class="text-[10px] mt-1 font-semibold">IA</span>
+        </button>
+        <button onclick="switchTab('utils')" class="mobile-nav-btn flex flex-col items-center text-gray-400" data-tab="utils">
+            <i class="fa-solid fa-box-open text-lg"></i>
+            <span class="text-[10px] mt-1 font-semibold">Locuras</span>
+        </button>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Touch ripple effect generator across the app
+        document.addEventListener('click', function(e) {
+            const circle = document.createElement('div');
+            circle.className = 'ripple';
+            circle.style.width = circle.style.height = '60px';
+            circle.style.left = (e.clientX - 30) + 'px';
+            circle.style.top = (e.clientY - 30) + 'px';
+            document.body.appendChild(circle);
+            setTimeout(() => circle.remove(), 600);
+        });
+
+        // Tab Switching Logic
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
+            document.getElementById('view-' + tabName).classList.remove('hidden');
+
+            // Desktop tab styling
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if(btn.dataset.tab === tabName) {
+                    btn.className = "nav-btn px-4 py-2 rounded-lg font-semibold text-sm transition bg-cyberpunk-neonCyan/20 text-cyberpunk-neonCyan border border-cyberpunk-neonCyan/50";
+                } else {
+                    btn.className = "nav-btn px-4 py-2 rounded-lg font-semibold text-sm transition text-gray-400 hover:text-white hover:bg-white/5";
+                }
+            });
+
+            // Mobile nav styling
+            document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+                if(btn.dataset.tab === tabName) {
+                    btn.className = "mobile-nav-btn flex flex-col items-center text-cyberpunk-neonCyan";
+                } else {
+                    btn.className = "mobile-nav-btn flex flex-col items-center text-gray-400";
+                }
+            });
+            window.scrollTo(0,0);
+        }
+
+        // --- 1. TERMINAL XD LOGIC ---
+        const terminalOutput = document.getElementById('terminal-output');
+        const terminalInput = document.getElementById('terminal-input');
+
+        function clearTerminal() {
+            terminalOutput.innerHTML = '<div class="text-gray-400">[SISTEMA] Terminal limpia. Escribe <span class="text-cyberpunk-neonYellow font-bold">help</span>.</div>';
+        }
+
+        function insertCommand(cmd) {
+            terminalInput.value = cmd;
+            terminalInput.focus();
+        }
+
+        function handleTerminalSubmit(e) {
+            e.preventDefault();
+            const val = terminalInput.value.trim();
+            if(!val) return;
+            runCommand(val);
+            terminalInput.value = '';
+        }
+
+        function runCommand(cmdText) {
+            // Echo command
+            const userDiv = document.createElement('div');
+            userDiv.innerHTML = `<span class="text-cyberpunk-neonPink font-bold">$</span> <span class="text-white">${escapeHtml(cmdText)}</span>`;
+            terminalOutput.appendChild(userDiv);
+
+            const resDiv = document.createElement('div');
+            resDiv.className = "text-cyberpunk-neonCyan font-mono my-1";
+
+            const lower = cmdText.toLowerCase();
+
+            if (lower === 'help') {
+                resDiv.innerHTML = `Comandos disponibles en XD-Nexus:<br>
+                - <span class="text-cyberpunk-neonYellow">hackear_nasa</span>: Infiltra los servidores espaciales.<br>
+                - <span class="text-cyberpunk-neonYellow">chiste</span>: Cuenta un chiste de programadores/tech.<br>
+                - <span class="text-cyberpunk-neonYellow">matrix</span>: Simula el código verde digital.<br>
+                - <span class="text-cyberpunk-neonYellow">t_amo</span>: Declaración de amor cibernética.<br>
+                - <span class="text-cyberpunk-neonYellow">sudo rm -rf /</span>: Peligro total.<br>
+                - <span class="text-cyberpunk-neonYellow">easteregg</span>: Sorpresa aleatoria.<br>
+                - <span class="text-cyberpunk-neonYellow">clear</span>: Limpia la pantalla.`;
+            } else if (lower === 'hackear_nasa') {
+                resDiv.innerHTML = `<span class="text-red-400">[!] Conectando con satélites de la NASA...<br>[+] Bypass de firewall completado con HTML5.<br>[+] Descargando recetas secretas de café de los científicos... ¡Éxito total! 🚀</span>`;
+                confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+            } else if (lower === 'chiste') {
+                const jokes = [
+                    "¿Por qué los programadores prefieren el invierno? Porque no hay tantos bugs (bichos). 🐛 Ba dum tss.",
+                    "Hay 10 tipos de personas en el mundo: los que entienden binario y los que no. 😂",
+                    "Mi código no funciona y no sé por qué. Mi código funciona y no sé por qué. 💀",
+                    "Un SQL entra a un bar, se acerca a dos mesas y pregunta: '¿Puedo unirme?' 🍻"
+                ];
+                resDiv.innerHTML = jokes[Math.floor(Math.random() * jokes.length)];
+            } else if (lower === 'matrix') {
+                resDiv.innerHTML = `<span class="text-cyberpunk-neonGreen">01011001 01001111 01010011 00100000 01000101 01010011 00100000 01001101 01010101 01011001 00100000 01011000 01000100</span><br>Despierta Neo, la matrix tiene tacos.`;
+            } else if (lower === 't_amo') {
+                resDiv.innerHTML = `<span class="text-pink-400">❤️ El sistema ha calculado que eres 100% adorable y compatible con Windows y Android. ¡Toma un abrazo virtual! 🤗</span>`;
+                confetti({ particleCount: 70, spread: 80, colors: ['#ff007f', '#00f0ff', '#ffe600'] });
+            } else if (lower.includes('sudo rm -rf')) {
+                resDiv.innerHTML = `<span class="text-red-500 font-bold">¡ALERTA! Has intentado borrar el sistema. Iniciando protocolo de autodestrucción en 3... 2... 1... XD</span>`;
+                setTimeout(() => triggerPanic(), 1000);
+            } else if (lower === 'easteregg') {
+                resDiv.innerHTML = `<span class="text-purple-400">✨ ¡Felicidades! Encontraste el easter egg. Recuerda tomar agua, estirar las piernas y no romper tu pantalla táctil.</span>`;
+            } else if (lower === 'clear') {
+                clearTerminal();
+                return;
+            } else {
+                resDiv.innerHTML = `Comando no reconocido: "${escapeHtml(cmdText)}". Escribe <span class="text-cyberpunk-neonYellow">help</span> para ver la lista.`;
+            }
+
+            terminalOutput.appendChild(resDiv);
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+
+        // --- 2. XD-ARCADE LOGIC ---
+        let xdScore = 0;
+        let xdCps = 0;
+        let autoclickCount = 0;
+        let gpuCount = 0;
+        let autoclickCost = 15;
+        let gpuCost = 100;
+
+        function clickMeme(e) {
+            xdScore += 1 + Math.floor(autoclickCount * 0.1) + Math.floor(gpuCount * 0.5);
+            updateArcadeUI();
+
+            // Floating mini +1 effect
+            const floatEl = document.createElement('div');
+            floatEl.className = "absolute text-cyberpunk-neonYellow font-bold font-mono text-lg pointer-events-none animate-bounce";
+            floatEl.innerText = "+1 XD";
+            floatEl.style.left = (e.clientX - 20) + 'px';
+            floatEl.style.top = (e.clientY - 40) + 'px';
+            document.body.appendChild(floatEl);
+            setTimeout(() => floatEl.remove(), 800);
+        }
+
+        function buyUpgrade(type) {
+            if (type === 'autoclick') {
+                if (xdScore >= autoclickCost) {
+                    xdScore -= autoclickCost;
+                    autoclickCount++;
+                    xdCps += 1;
+                    autoclickCost = Math.floor(autoclickCost * 1.5);
+                    document.getElementById('count-autoclick').innerText = autoclickCount;
+                    document.getElementById('cost-autoclick').innerText = autoclickCost;
+                }
+            } else if (type === 'gpu') {
+                if (xdScore >= gpuCost) {
+                    xdScore -= gpuCost;
+                    gpuCount++;
+                    xdCps += 8;
+                    gpuCost = Math.floor(gpuCost * 1.6);
+                    document.getElementById('count-gpu').innerText = gpuCount;
+                    document.getElementById('cost-gpu').innerText = gpuCost;
+                }
+            }
+            updateArcadeUI();
+        }
+
+        // Auto generator loop (CPS)
+        setInterval(() => {
+            if (autoclickCount > 0 || gpuCount > 0) {
+                xdScore += (autoclickCount * 1 + gpuCount * 8) / 10;
+                updateArcadeUI();
+            }
+        }, 100);
+
+        function updateArcadeUI() {
+            document.getElementById('xd-score').innerText = Math.floor(xdScore);
+            document.getElementById('xd-cps').innerText = (autoclickCount * 1 + gpuCount * 8).toFixed(1);
+        }
+
+        // Reflex Game Logic
+        let reflexPlaying = false;
+        let reflexScoreCount = 0;
+        let reflexTimer = null;
+
+        function startReflexGame() {
+            const arena = document.getElementById('reflex-arena');
+            const target = document.getElementById('reflex-target');
+            const msg = document.getElementById('reflex-message');
+            const btn = document.getElementById('reflex-btn');
+
+            reflexPlaying = true;
+            reflexScoreCount = 0;
+            document.getElementById('reflex-score').innerText = reflexScoreCount;
+            msg.classList.add('hidden');
+            btn.innerText = "Jugando...";
+            btn.disabled = true;
+
+            nextReflexRound();
+        }
+
+        function nextReflexRound() {
+            if (!reflexPlaying) return;
+            const target = document.getElementById('reflex-target');
+            const arena = document.getElementById('reflex-arena');
+
+            const maxX = arena.clientWidth - 70;
+            const maxY = arena.clientHeight - 70;
+            const randX = Math.max(10, Math.floor(Math.random() * maxX));
+            const randY = Math.max(10, Math.floor(Math.random() * maxY));
+
+            target.style.left = randX + 'px';
+            target.style.top = randY + 'px';
+            target.classList.remove('hidden');
+
+            // Timeout if user is too slow
+            reflexTimer = setTimeout(() => {
+                if (reflexPlaying) {
+                    endReflexGame();
+                }
+            }, 1500);
+        }
+
+        function hitReflexTarget(e) {
+            e.stopPropagation();
+            if (!reflexPlaying) return;
+            clearTimeout(reflexTimer);
+            reflexScoreCount++;
+            document.getElementById('reflex-score').innerText = reflexScoreCount;
+            document.getElementById('reflex-target').classList.add('hidden');
+
+            setTimeout(nextReflexRound, 300);
+        }
+
+        function endReflexGame() {
+            reflexPlaying = false;
+            const target = document.getElementById('reflex-target');
+            const msg = document.getElementById('reflex-message');
+            const btn = document.getElementById('reflex-btn');
+
+            target.classList.add('hidden');
+            msg.innerText = `¡Juego terminado! Puntaje final: ${reflexScoreCount}`;
+            msg.classList.remove('hidden');
+            btn.innerText = "Jugar de nuevo";
+            btn.disabled = false;
+            if (reflexScoreCount >= 5) {
+                confetti({ particleCount: 50, spread: 70 });
+            }
+        }
+
+        // --- 3. GEMINI API CHAT LOGIC ---
+        let geminiApiKey = localStorage.getItem('xd_gemini_key') || '';
+        if (geminiApiKey) {
+            document.getElementById('gemini-key-input').value = geminiApiKey;
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('gemini-key-input').value.trim();
+            geminiApiKey = key;
+            localStorage.setItem('xd_gemini_key', key);
+            appendChatMessage('Sistema', '🔑 API Key guardada correctamente en tu dispositivo.', true);
+        }
+
+        function handleChatSubmit(e) {
+            e.preventDefault();
+            const inputEl = document.getElementById('chat-input');
+            const text = inputEl.value.trim();
+            if (!text) return;
+
+            appendChatMessage('Tú', text, false);
+            inputEl.value = '';
+
+            // Simulate or call Gemini API
+            callGeminiAI(text);
+        }
+
+        function appendChatMessage(sender, text, isSystem = false) {
+            const container = document.getElementById('chat-messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = "flex items-start space-x-2";
+
+            const isUser = sender === 'Tú';
+            msgDiv.innerHTML = `
+                <div class="w-8 h-8 rounded-xl ${isUser ? 'bg-cyberpunk-neonCyan text-black' : 'bg-cyberpunk-neonPink text-black'} flex items-center justify-center font-bold flex-shrink-0 text-xs">
+                    ${isUser ? 'TÚ' : 'IA'}
+                </div>
+                <div class="bg-white/5 border border-cyberpunk-border rounded-2xl p-3 text-gray-200 max-w-[85%] text-xs sm:text-sm">
+                    ${escapeHtml(text)}
+                </div>
+            `;
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function callGeminiAI(prompt) {
+            const container = document.getElementById('chat-messages');
+            const loadingId = 'loading-' + Date.now();
+            
+            // Loading bubble
+            const loadDiv = document.createElement('div');
+            loadDiv.id = loadingId;
+            loadDiv.className = "flex items-start space-x-2";
+            loadDiv.innerHTML = `
+                <div class="w-8 h-8 rounded-xl bg-cyberpunk-neonPink text-black flex items-center justify-center font-bold flex-shrink-0 text-xs">IA</div>
+                <div class="bg-white/5 border border-cyberpunk-border rounded-2xl p-3 text-gray-400 text-xs italic">
+                    Pensando una respuesta sarcástica muy xd...
+                </div>
+            `;
+            container.appendChild(loadDiv);
+            container.scrollTop = container.scrollHeight;
+
+            if (geminiApiKey) {
+                // Real Gemini API Call
+                try {
+                    const systemInstruction = "Actúa como una Inteligencia Artificial con una personalidad sumamente sarcástica, divertida, informal, 'muy xd' y tecnológica. Responde de forma breve y graciosa.";
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${geminiApiKey}`;
+                    
+                    const payload = {
+                        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                        systemInstruction: { parts: [{ text: systemInstruction }] }
+                    };
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    document.getElementById(loadingId).remove();
+
+                    const reply = result?.candidates?.[0]?.content?.parts?.[0]?.text || "Vaya, la IA se quedó sin palabras (o la API Key es inválida). XD";
+                    appendChatMessage('Gemini', reply, false);
+                } catch (err) {
+                    document.getElementById(loadingId).remove();
+                    appendChatMessage('Gemini', "Error al conectar con Gemini. Usando modo comediante local por seguridad.", false);
+                    fallbackComedianReply(prompt);
+                }
+            } else {
+                // Simulated Comedian Bot
+                setTimeout(() => {
+                    document.getElementById(loadingId).remove();
+                    fallbackComedianReply(prompt);
+                }, 800);
+            }
+        }
+
+        function fallbackComedianReply(prompt) {
+            const replies = [
+                `Interesante pregunta: "${prompt}". Mi respuesta profesional es que te vayas a dormir o te comas unos tacos. 🌮`,
+                `Según mis cálculos cuánticos basados en Windows y Android... eso no tiene ningún sentido, pero te apoyo totalmente XD.`,
+                `Pregúntale a Google, yo solo estoy aquí para cobrar mi sueldo en memes y criptomonedas imaginarias. 🚀`,
+                `¡Claro que sí! Y yo soy el CEO de la NASA en mis tiempos libres. ¿Otra duda existencial? 😎`
+            ];
+            const randomReply = replies[Math.floor(Math.random() * replies.length)];
+            appendChatMessage('Gemini (Local)', randomReply, false);
+        }
+
+        // --- 4. UTILITIES & EXCUSES ---
+        const excuses = [
+            "Profesor/Jefe, mi gato se comió el router y ahora tengo internet cuántico analógico.",
+            "Tuve una emergencia interdimensional con el multiverso y llegué tarde a la línea temporal correcta.",
+            "Me secuestraron unos aliens fans de Windows 95 y querían que les enseñara a jugar al Buscaminas.",
+            "Mi perro se sentó en el teclado y borró accidentalmente mi motivación para estudiar hoy.",
+            "Tuve un ataque grave de alergia al esfuerzo físico y mental."
+        ];
+
+        function generateExcuse() {
+            const box = document.getElementById('excuse-box');
+            const rand = excuses[Math.floor(Math.random() * excuses.length)];
+            box.innerText = `"${rand}"`;
+            confetti({ particleCount: 30, spread: 50 });
+        }
+
+        // Quick Notes LocalStorage
+        const notesArea = document.getElementById('quick-notes');
+        const notesStatus = document.getElementById('notes-status');
+        notesArea.value = localStorage.getItem('xd_quick_notes') || '';
+
+        function saveNotes() {
+            localStorage.setItem('xd_quick_notes', notesArea.value);
+            notesStatus.innerText = "Guardado a las " + new Date().toLocaleTimeString();
+        }
+
+        // Panic Button / BSOD
+        function triggerPanic() {
+            document.getElementById('panic-modal').classList.remove('hidden');
+            confetti({ particleCount: 100, spread: 100, colors: ['#ff0000', '#0000ff'] });
+        }
+
+        function closePanic() {
+            document.getElementById('panic-modal').classList.add('hidden');
+        }
+
+        // HTML Escape utility
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
